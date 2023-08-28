@@ -1,7 +1,7 @@
 const log = require('./log');
 
 const BuiltinHelper = require('./BuiltinHelper');
-const FirebaseHelper = require('./FirebaseHelper');
+const WebHelper = require('./WebHelper');
 
 const _Asset = require('./Asset');
 const _AssetType = require('./AssetType');
@@ -13,7 +13,7 @@ class ScratchStorage {
         this.defaultAssetId = {};
 
         this.builtinHelper = new BuiltinHelper(this);
-        this.firebaseHelper = new FirebaseHelper(this);
+        this.webHelper = new WebHelper(this);
         this.builtinHelper.registerDefaultAssets(this);
 
         this._helpers = [
@@ -22,7 +22,7 @@ class ScratchStorage {
                 priority: 100
             },
             {
-                helper: this.firebaseHelper,
+                helper: this.webHelper,
                 priority: -100
             }
         ];
@@ -127,13 +127,48 @@ class ScratchStorage {
     }
 
     /**
-     * Register a web-based store for assets. Sources will be checked in order of registration.
-     * @param {Array.<AssetType>} types - The types of asset provided by this store.
-     * @param {FirebaseStorage} firebaseStorage - A firebase storage object.
-     * @param {string} path - path to the storage folder.
+     * Register a web-based source for assets. Sources will be checked in order of registration.
+     * @param {Array.<AssetType>} types - The types of asset provided by this source.
+     * @param {UrlFunction} getFunction - A function which computes a GET URL from an Asset.
+     * @param {UrlFunction} createFunction - A function which computes a POST URL for asset data.
+     * @param {UrlFunction} updateFunction - A function which computes a PUT URL for asset data.
      */
-    addFirebaseStore (types, firebaseStorage, path = '') {
-        this.firebaseHelper.addStore(types, firebaseStorage, path);
+    addWebStore (types, getFunction, createFunction, updateFunction) {
+        this.webHelper.addStore(types, getFunction, createFunction, updateFunction);
+    }
+
+    /**
+     * Register a web-based source for assets. Sources will be checked in order of registration.
+     * @deprecated Please use addWebStore
+     * @param {Array.<AssetType>} types - The types of asset provided by this source.
+     * @param {UrlFunction} urlFunction - A function which computes a GET URL from an Asset.
+     */
+    addWebSource (types, urlFunction) {
+        log.warn('Deprecation: Storage.addWebSource has been replaced by addWebStore.');
+        this.addWebStore(types, urlFunction);
+    }
+
+    /**
+     * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+     * @param {AssetType} type - Get the default ID for assets of this type.
+     * @return {?string} The ID of the default asset of the given type, if any.
+     */
+    getDefaultAssetId (type) {
+        if (Object.prototype.hasOwnProperty.call(this.defaultAssetId, type.name)) {
+            return this.defaultAssetId[type.name];
+        }
+    }
+
+    /**
+     * Set the default ID for a particular type of asset. This default asset will be used if a requested asset cannot
+     * be found and automatic fallback is enabled. Ideally this should be an asset that is available locally or even
+     * one built into this module.
+     * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+     * @param {AssetType} type - The type of asset for which the default will be set.
+     * @param {string} id - The default ID to use for this type of asset.
+     */
+    setDefaultAssetId (type, id) {
+        this.defaultAssetId[type.name] = id;
     }
 
     /**
@@ -196,7 +231,7 @@ class ScratchStorage {
         dataFormat = dataFormat || assetType.runtimeFormat;
         return new Promise(
             (resolve, reject) =>
-                this.firebaseHelper.store(assetType, dataFormat, data, assetId)
+                this.webHelper.store(assetType, dataFormat, data, assetId)
                     .then(body => {
                         this.builtinHelper._store(assetType, dataFormat, data, body.id);
                         return resolve(body);
