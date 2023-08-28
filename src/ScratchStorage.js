@@ -1,5 +1,6 @@
 const log = require('./log');
 
+const BuiltinHelper = require('./BuiltinHelper');
 const FirebaseHelper = require('./FirebaseHelper');
 
 const _Asset = require('./Asset');
@@ -11,9 +12,15 @@ class ScratchStorage {
     constructor () {
         this.defaultAssetId = {};
 
+        this.builtinHelper = new BuiltinHelper(this);
         this.firebaseHelper = new FirebaseHelper(this);
+        this.builtinHelper.registerDefaultAssets(this);
 
         this._helpers = [
+            {
+                helper: this.builtinHelper,
+                priority: 100
+            },
             {
                 helper: this.firebaseHelper,
                 priority: -100
@@ -122,11 +129,11 @@ class ScratchStorage {
     /**
      * Register a web-based store for assets. Sources will be checked in order of registration.
      * @param {Array.<AssetType>} types - The types of asset provided by this store.
-     * @param {StorageReference} firebaseStorageReference - A firebase storage object.
+     * @param {FirebaseStorage} firebaseStorage - A firebase storage object.
      * @param {string} path - path to the storage folder.
      */
-    addFirebaseStore (types, firebaseStorageReference) {
-        this.firebaseHelper.addStore(types, firebaseStorageReference);
+    addFirebaseStore (types, firebaseStorage, path = '') {
+        this.firebaseHelper.addStore(types, firebaseStorage, path);
     }
 
     /**
@@ -161,7 +168,9 @@ class ScratchStorage {
                     return tryNextHelper();
                 }
                 // Note that other attempts may have logged errors; if this succeeds they will be suppressed.
-                return loading.catch(tryNextHelper);
+                return loading
+                    // TODO: maybe some types of error should prevent trying the next helper?
+                    .catch(tryNextHelper);
             } else if (errors.length > 0) {
                 // We looked through all the helpers and couldn't find the asset, AND
                 // at least one thing went wrong while we were looking.
