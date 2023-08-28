@@ -44,14 +44,13 @@ class FirebaseHelper extends Helper {
     /**
      * Register a web-based store for assets. Sources will be checked in order of registration.
      * @param {Array.<AssetType>} types - The types of asset provided by this store.
-     * @param {FirebaseStorage} firebaseStorage - A firebase storage object.
+     * @param {StorageReference} firebaseStorageReference - A firebase storage object.
      * @param {string} path - path to the storage folder.
      */
-    addStore (types, firebaseStorage, path) {
+    addStore (types, firebaseStorageReference) {
         this.stores.push({
             types: types.map(assetType => assetType.name),
-            storage: firebaseStorage,
-            path: path
+            storageReference: firebaseStorageReference
         });
     }
 
@@ -88,9 +87,8 @@ class FirebaseHelper extends Helper {
                 return Promise.reject(errors);
             }
 
-            const storage = store.storage;
-            const storageRef = ref(storage, store.path);
-            const assetRef = ref(storageRef, assetId);
+            const storageRef = store.storageReference;
+            const assetRef = ref(storageRef, `${assetId}.${dataFormat}`);
 
             getBytes(assetRef).then(buffer => {
                 if (buffer) {
@@ -135,10 +133,9 @@ class FirebaseHelper extends Helper {
             return;
         }
 
-        const storage = store.storage;
-        const storageRef = ref(storage, store.path);
+        const storageRef = store.storageReference;
         const assetRef = ref(storageRef, assetId);
-        uploadBytes(assetRef, data);
+        return uploadBytes(assetRef, data);
 
     }
 }
