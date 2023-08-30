@@ -158,7 +158,7 @@ class WebHelper extends Helper {
             )
         )[0];
 
-        const method = create ? 'post' : 'put';
+        const method = 'post';
 
         if (!store) return Promise.reject(new Error('No appropriate stores'));
 
